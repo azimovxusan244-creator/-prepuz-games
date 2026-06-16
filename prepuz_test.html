@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>prep.uz — Rus tili bilim testi</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6fa;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.card{background:#fff;border-radius:16px;padding:2rem 1.5rem;max-width:480px;width:100%;box-shadow:0 2px 16px rgba(0,0,0,0.08);}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;}
+.logo-icon{width:42px;height:42px;background:#1a56db;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;}
+.logo-text{font-size:18px;font-weight:600;color:#111;}
+.logo-sub{font-size:12px;color:#888;}
+.progress-bar{height:4px;background:#e8edf5;border-radius:4px;margin-bottom:1.5rem;overflow:hidden;}
+.progress-fill{height:100%;background:#1a56db;border-radius:4px;transition:width 0.4s;}
+.q-num{font-size:12px;color:#888;margin-bottom:8px;}
+.q-text{font-size:16px;font-weight:600;color:#111;margin-bottom:1.25rem;line-height:1.55;}
+.options{display:flex;flex-direction:column;gap:10px;margin-bottom:1.25rem;}
+.opt{padding:13px 16px;border:1.5px solid #e0e5f0;border-radius:10px;cursor:pointer;font-size:14px;color:#222;background:#fff;transition:all 0.15s;text-align:left;width:100%;}
+.opt:hover{background:#f0f4ff;border-color:#b3c4f5;}
+.opt.selected{border-color:#1a56db;background:#e6f1fb;color:#0c447c;}
+.opt.correct{border-color:#3b6d11;background:#eaf3de;color:#3b6d11;font-weight:500;}
+.opt.wrong{border-color:#a32d2d;background:#fcebeb;color:#a32d2d;}
+.feedback{font-size:13px;margin-bottom:1rem;padding:10px 14px;border-radius:8px;line-height:1.5;}
+.feedback.ok{background:#eaf3de;color:#3b6d11;}
+.feedback.no{background:#fcebeb;color:#a32d2d;}
+.btn{width:100%;padding:13px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:opacity 0.15s;}
+.btn:hover{opacity:0.9;}
+.btn:disabled{opacity:0.35;cursor:default;}
+.result-wrap{text-align:center;padding:0.5rem 0;}
+.result-score{font-size:52px;font-weight:700;color:#1a56db;margin-bottom:6px;}
+.result-label{font-size:14px;color:#888;margin-bottom:1.5rem;}
+.result-msg{font-size:18px;font-weight:600;color:#111;margin-bottom:8px;}
+.result-sub{font-size:14px;color:#555;margin-bottom:1.75rem;line-height:1.65;}
+.cta{width:100%;padding:14px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;}
+.cta:hover{opacity:0.9;}
+.restart{margin-top:12px;width:100%;padding:11px;background:#f4f6fa;color:#555;border:1.5px solid #e0e5f0;border-radius:10px;font-size:14px;cursor:pointer;}
+.restart:hover{background:#e8edf5;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    <div>
+      <div class="logo-text">prep.uz</div>
+      <div class="logo-sub">Rus tili bilim testi</div>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog" style="width:20%"></div></div>
+  <div id="quiz-area"></div>
+</div>
+
+<script>
+const questions = [
+  {
+    q: '"Мне нравится" ni o\'zbek tiliga tarjima qiling',
+    opts: ["Menga yoqadi", "Men yoqaman", "Menga kerak", "Menga tegishli"],
+    ans: 0,
+    exp: '"Nravitsya" — yoqmoq, xush kelmoq degan ma\'noni bildiradi.'
+  },
+  {
+    q: "To'g'ri shaklni tanlang: 'Я ___ в школу каждый день.'",
+    opts: ["идёт", "идут", "хожу", "ходят"],
+    ans: 2,
+    exp: '"Я" (men) bilan "хожу" ishlatiladi — 1-shaxs birlik.'
+  },
+  {
+    q: '"Который час?" nima degan ma\'noni anglatadi?',
+    opts: ["Hozir qayerda?", "Soat nechada?", "Bugun qanday kun?", "Nima kerak?"],
+    ans: 1,
+    exp: 'Bu iboraning to\'g\'ri tarjimasi — soat necha? yoki soat nechada?'
+  },
+  {
+    q: '"Пожалуйста" so\'zi qaysi vaziyatda ishlatiladi?',
+    opts: ["Rahmat aytganda", "Kechirim so'raganda", "Iltimos yoki xush kelibsiz deganda", "Xayrlashganda"],
+    ans: 2,
+    exp: '"Pozhaluysta" — iltimos ma\'nosida ham, "arzimaydi / xush kelibsiz" ma\'nosida ham ishlatiladi.'
+  },
+  {
+    q: '"Я не понимаю" jumlasining ma\'nosi nima?',
+    opts: ["Men bilmayman", "Men tushunmayman", "Men ko'rmayman", "Men eshitmayman"],
+    ans: 1,
+    exp: '"Ponimat\'" — tushunmoq. "Ne ponimayu" — tushunmayman.'
+  }
+];
+
+let cur = 0, score = 0, answered = false;
+
+function render() {
+  if (cur >= questions.length) { showResult(); return; }
+  const q = questions[cur];
+  document.getElementById('prog').style.width = ((cur+1)/questions.length*100)+'%';
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="q-num">Savol ${cur+1} / ${questions.length}</div>
+    <div class="q-text">${q.q}</div>
+    <div class="options" id="opts">
+      ${q.opts.map((o,i)=>`<button class="opt" onclick="pick(${i})">${o}</button>`).join('')}
+    </div>
+    <div id="fb"></div>
+    <button class="btn" id="nxt" onclick="next()" disabled>${cur===questions.length-1?"Natijani ko'rish →":"Keyingisi →"}</button>
+  `;
+  answered = false;
+}
+
+function pick(i) {
+  if (answered) return;
+  answered = true;
+  const q = questions[cur];
+  const opts = document.querySelectorAll('.opt');
+  opts[i].classList.add(i===q.ans?'correct':'wrong');
+  if (i!==q.ans) opts[q.ans].classList.add('correct');
+  if (i===q.ans) score++;
+  document.getElementById('fb').innerHTML = `<div class="feedback ${i===q.ans?'ok':'no'}">${i===q.ans?'✓ To\'g\'ri! ':'✗ Noto\'g\'ri. '}${q.exp}</div>`;
+  document.getElementById('nxt').disabled = false;
+}
+
+function next() { cur++; render(); }
+
+function showResult() {
+  const pct = Math.round(score/questions.length*100);
+  let msg, sub, link;
+  if (pct>=80){
+    msg="Ajoyib natija!";
+    sub="Rus tili asoslarini yaxshi bilasiz. Ruqshona opa bilan birga siz yanada yuqori darajaga chiqasiz.";
+  } else if (pct>=60){
+    msg="Yaxshi boshlang'ich!";
+    sub="Biroz bilimingiz bor, lekin bo'shliqlar mavjud. prep.uz kursi shu bo'shliqlarni 3–4 oyda to'ldiradi.";
+  } else {
+    msg="Hali yo'l bor — va bu normal!";
+    sub="Ko'pchilik aynan shu nuqtadan boshlagan. Ruqshona opa 10 yillik tajribasiyla noldan olib chiqadi.";
+  }
+
+  document.getElementById('quiz-area').innerHTML = `
+    <div class="result-wrap">
+      <div class="result-score">${score}/${questions.length}</div>
+      <div class="result-label">${pct}% to'g'ri javob</div>
+      <div class="result-msg">${msg}</div>
+      <div class="result-sub">${sub}</div>
+      <button class="cta" onclick="window.open('https://prep.uz','_blank')">prep.uz kursi haqida bilish →</button>
+      <button class="restart" onclick="location.reload()">Qayta yechish</button>
+    </div>
+  `;
+}
+
+render();
+</script>
+</body>
+</html>

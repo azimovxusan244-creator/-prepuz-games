@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>prep.uz — So'z o'yini</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6fa;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.card{background:#fff;border-radius:16px;padding:2rem 1.5rem;max-width:480px;width:100%;box-shadow:0 2px 16px rgba(0,0,0,0.08);}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem;}
+.logo-icon{width:42px;height:42px;background:#1a56db;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:17px;}
+.logo-text{font-size:18px;font-weight:600;color:#111;}
+.logo-sub{font-size:12px;color:#888;}
+.title{font-size:15px;font-weight:600;color:#111;margin-bottom:4px;}
+.sub{font-size:13px;color:#888;margin-bottom:1.25rem;}
+.score-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.score{font-size:13px;color:#888;}
+.timer{font-size:13px;font-weight:600;color:#111;}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.col-label{font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;text-align:center;}
+.word-btn{width:100%;padding:11px 8px;border:1.5px solid #e0e5f0;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;background:#fff;color:#222;transition:all 0.15s;margin-bottom:8px;text-align:center;}
+.word-btn:hover{background:#f0f4ff;border-color:#b3c4f5;}
+.word-btn.selected{border-color:#1a56db;background:#e6f1fb;color:#0c447c;}
+.word-btn.matched{border-color:#3b6d11;background:#eaf3de;color:#3b6d11;cursor:default;}
+.word-btn.wrong{border-color:#a32d2d;background:#fcebeb;color:#a32d2d;animation:shake 0.3s;}
+.word-btn:disabled{cursor:default;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-4px);}75%{transform:translateX(4px);};}
+.feedback{text-align:center;font-size:13px;min-height:20px;margin:8px 0;color:#888;}
+.result-wrap{text-align:center;padding:0.5rem 0;}
+.result-emoji{font-size:44px;margin-bottom:12px;}
+.result-title{font-size:20px;font-weight:600;color:#111;margin-bottom:8px;}
+.result-sub{font-size:14px;color:#555;margin-bottom:12px;line-height:1.65;}
+.result-time{font-size:13px;color:#888;margin-bottom:1.5rem;}
+.cta{width:100%;padding:14px;background:#1a56db;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;}
+.cta:hover{opacity:0.9;}
+.restart{width:100%;padding:11px;background:#f4f6fa;color:#555;border:1.5px solid #e0e5f0;border-radius:10px;font-size:14px;cursor:pointer;}
+.restart:hover{background:#e8edf5;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">P</div>
+    <div>
+      <div class="logo-text">prep.uz</div>
+      <div class="logo-sub">So'z o'yini — juftlarni top</div>
+    </div>
+  </div>
+  <div id="game-area"></div>
+</div>
+
+<script>
+const allPairs = [
+  {ru:"Привет", uz:"Salom"},
+  {ru:"Спасибо", uz:"Rahmat"},
+  {ru:"Работа", uz:"Ish"},
+  {ru:"Семья", uz:"Oila"},
+  {ru:"Учиться", uz:"O'qimoq"},
+  {ru:"Понимать", uz:"Tushunmoq"},
+  {ru:"Говорить", uz:"Gapirmoq"},
+  {ru:"Друг", uz:"Do'st"},
+  {ru:"Время", uz:"Vaqt"},
+  {ru:"Деньги", uz:"Pul"},
+  {ru:"Дом", uz:"Uy"},
+  {ru:"Еда", uz:"Taom"},
+  {ru:"Вода", uz:"Suv"},
+  {ru:"Город", uz:"Shahar"},
+  {ru:"Учитель", uz:"O'qituvchi"},
+];
+
+let pairs, ruWords, uzWords, selRu, selUz, matched, errors, startTime, timerInterval;
+
+function shuffle(a){return a.sort(()=>Math.random()-0.5);}
+
+function init(){
+  pairs = shuffle([...allPairs]).slice(0,5);
+  ruWords = shuffle(pairs.map(p=>p.ru));
+  uzWords = shuffle(pairs.map(p=>p.uz));
+  selRu=null; selUz=null;
+  matched=0; errors=0;
+  startTime=Date.now();
+  clearInterval(timerInterval);
+  render();
+  timerInterval=setInterval(updateTimer,1000);
+}
+
+function getElapsed(){
+  const s=Math.floor((Date.now()-startTime)/1000);
+  return Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60);
+}
+
+function updateTimer(){
+  const el=document.getElementById('timer');
+  if(el) el.textContent=getElapsed();
+}
+
+function render(){
+  document.getElementById('game-area').innerHTML=`
+    <div class="title">Rus so'zini o'zbek tarjimasiga ulang</div>
+    <div class="sub">5 ta juftni to'g'ri bog'lang</div>
+    <div class="score-row">
+      <div class="score" id="score">Juftlar: 0/5</div>
+      <div class="timer" id="timer">0:00</div>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="col-label">Ruscha</div>
+        ${ruWords.map(w=>`<button class="word-btn" id="ru-${w}" onclick="pickRu('${w}')">${w}</button>`).join('')}
+      </div>
+      <div>
+        <div class="col-label">O'zbekcha</div>
+        ${uzWords.map(w=>`<button class="word-btn" id="uz-${w}" onclick="pickUz('${w}')">${w}</button>`).join('')}
+      </div>
+    </div>
+    <div class="feedback" id="fb"></div>
+  `;
+}
+
+function pickRu(w){
+  if(document.getElementById('ru-'+w).classList.contains('matched')) return;
+  if(selRu) document.getElementById('ru-'+selRu).classList.remove('selected');
+  selRu=w;
+  document.getElementById('ru-'+w).classList.add('selected');
+  if(selUz) check();
+}
+
+function pickUz(w){
+  if(document.getElementById('uz-'+w).classList.contains('matched')) return;
+  if(selUz) document.getElementById('uz-'+selUz).classList.remove('selected');
+  selUz=w;
+  document.getElementById('uz-'+w).classList.add('selected');
+  if(selRu) check();
+}
+
+function check(){
+  const pair=pairs.find(p=>p.ru===selRu);
+  const correct=pair&&pair.uz===selUz;
+  const rb=document.getElementById('ru-'+selRu);
+  const ub=document.getElementById('uz-'+selUz);
+  if(correct){
+    rb.classList.remove('selected'); rb.classList.add('matched'); rb.disabled=true;
+    ub.classList.remove('selected'); ub.classList.add('matched'); ub.disabled=true;
+    matched++;
+    document.getElementById('score').textContent='Juftlar: '+matched+'/5';
+    document.getElementById('fb').textContent='✓ To\'g\'ri!';
+    if(matched===5){clearInterval(timerInterval); setTimeout(showResult,600);}
+  } else {
+    errors++;
+    rb.classList.add('wrong'); ub.classList.add('wrong');
+    document.getElementById('fb').textContent='✗ Mos emas, qayta urinib ko\'ring';
+    setTimeout(()=>{
+      rb.classList.remove('wrong','selected');
+      ub.classList.remove('wrong','selected');
+    },600);
+  }
+  selRu=null; selUz=null;
+}
+
+function showResult(){
+  clearInterval(timerInterval);
+  const elapsed=getElapsed();
+  let emoji,msg,sub;
+  if(errors===0){
+    emoji="🏆"; msg="Mukammal!";
+    sub="Birorta ham xato yo'q. Siz tez o'rganasiz — Ruqshona opa bilan 3 oyda erkin gaplasha olasiz.";
+  } else if(errors<=3){
+    emoji="👍"; msg="Yaxshi natija!";
+    sub="Bir nechta xato bo'ldi, lekin bu normal. prep.uz kursi bu so'zlarni mustahkamlaydi.";
+  } else {
+    emoji="💪"; msg="Harakat bor!";
+    sub="Hali yo'l bor — va bu boshlang'ich uchun normal. Ko'pchilik aynan shu nuqtadan boshlagan.";
+  }
+  document.getElementById('game-area').innerHTML=`
+    <div class="result-wrap">
+      <div class="result-emoji">${emoji}</div>
+      <div class="result-title">${msg}</div>
+      <div class="result-sub">${sub}</div>
+      <div class="result-time">Vaqt: ${elapsed} | Xatolar: ${errors}</div>
+      <button class="cta" onclick="window.open('https://prep.uz','_blank')">prep.uz kursi haqida bilish →</button>
+      <button class="restart" onclick="init()">Qayta o'ynash</button>
+    </div>
+  `;
+}
+
+init();
+</script>
+</body>
+</html>
